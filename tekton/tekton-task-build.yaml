@@ -1,0 +1,160 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: jiangytcn-awesome-go-master-build
+spec:
+  inputs:
+    params:
+    - default: 0.0.1
+      description: the version number for this pipeline which is used as a tag on
+        docker images
+      name: version
+    - default: "1"
+      description: the PipelineRun build number
+      name: build_id
+    resources:
+    - name: workspace
+      outputImageDir: ""
+      targetPath: source
+      type: git
+  steps:
+  - args:
+    - make build
+    command:
+    - /bin/sh
+    - -c
+    image: gcr.azk8s.cn/jenkinsxio/builder-go:2.0.1094-428
+    name: build-make-build
+    workingDir: /workspace/source
+  - args:
+    - /kaniko/executor --cache=true --cache-dir=/workspace --context=/workspace/source
+      --dockerfile=/workspace/source/Dockerfile --destination=docker.io/jiangytcn/awesome-go:${inputs.params.version}
+      --cache-repo=docker.io/todo/cache --skip-tls-verify-registry=docker.io
+    command:
+    - /busybox/sh
+    - -c
+    env:
+    - name: DOCKER_CONFIG
+      value: /home/jenkins/.docker/
+    - name: DOCKER_REGISTRY
+      value: docker.io
+    image: gcr.azk8s.cn/kaniko-project/executor:debug-9912ccbf8d22bbafbf971124600fbb0b13b9cbd6
+    name: build-container-build
+    volumeMounts:
+    - mountPath: /home/jenkins
+      name: workspace-volume
+    - mountPath: /var/run/docker.sock
+      name: docker-daemon
+    - mountPath: /home/jenkins/.docker
+      name: volume-0
+    workingDir: /workspace/source
+  - args:
+    - cd /workspace/source/charts/awesome-go && jx step helm release
+    command:
+    - /bin/sh
+    - -c
+    env:
+    - name: CHART_REPOSITORY
+      value: http://192.168.1.12:8080
+    - name: APP_NAME
+      value: awesome-go
+    - name: BRANCH_NAME
+      value: master
+    - name: BUILD_NUMBER
+      value: "13"
+    - name: JOB_NAME
+      value: jiangytcn/awesome-go/master
+    - name: PIPELINE_KIND
+      value: release
+    - name: PULL_REFS
+      value: 'master:'
+    - name: REPO_NAME
+      value: awesome-go
+    - name: REPO_OWNER
+      value: jiangytcn
+    - name: SOURCE_URL
+      value: http://github.192.168.1.12.nip.io/jiangytcn/awesome-go.git
+    - name: XDG_CONFIG_HOME
+      value: /workspace/xdg_config
+    - name: JX_BATCH_MODE
+      value: "true"
+    - name: VERSION
+      value: ${inputs.params.version}
+    - name: BUILD_ID
+      value: ${inputs.params.build_id}
+    - name: PREVIEW_VERSION
+      value: ${inputs.params.version}
+    image: gcr.azk8s.cn/jenkinsxio/builder-go:2.0.1094-428
+    name: promote-helm-release
+    volumeMounts:
+    - mountPath: /home/jenkins
+      name: workspace-volume
+    - mountPath: /var/run/docker.sock
+      name: docker-daemon
+    workingDir: /workspace/source
+  # - args:
+  #   - cd /workspace/source/charts/awesome-go && jx promote -b --all-auto --timeout
+  #     1h --version ${VERSION} --namespace tekton-handson
+  #   command:
+  #   - /bin/sh
+  #   - -c
+  #   env:
+  #   - name: CHART_REPOSITORY
+  #     value: http://192.168.1.12:8080
+  #   - name: APP_NAME
+  #     value: awesome-go
+  #   - name: BRANCH_NAME
+  #     value: master
+  #   - name: BUILD_NUMBER
+  #     value: "13"
+  #   - name: DOCKER_CONFIG
+  #     value: /home/jenkins/.docker/
+  #   - name: DOCKER_REGISTRY
+  #     valueFrom:
+  #       configMapKeyRef:
+  #         key: docker.registry
+  #         name: jenkins-x-docker-registry
+  #   - name: JOB_NAME
+  #     value: jiangytcn/awesome-go/master
+  #   - name: PIPELINE_KIND
+  #     value: release
+  #   - name: PULL_REFS
+  #     value: 'master:'
+  #   - name: REPO_NAME
+  #     value: awesome-go
+  #   - name: REPO_OWNER
+  #     value: jiangytcn
+  #   - name: SOURCE_URL
+  #     value: http://github.192.168.1.12.nip.io/jiangytcn/awesome-go.git
+  #   - name: XDG_CONFIG_HOME
+  #     value: /workspace/xdg_config
+  #   - name: JX_BATCH_MODE
+  #     value: "true"
+  #   - name: VERSION
+  #     value: ${inputs.params.version}
+  #   - name: BUILD_ID
+  #     value: ${inputs.params.build_id}
+  #   - name: PREVIEW_VERSION
+  #     value: ${inputs.params.version}
+  #   image: gcr.azk8s.cn/jenkinsxio/builder-go:2.0.1094-428
+  #   name: promote-jx-promote
+  #   volumeMounts:
+  #   - mountPath: /home/jenkins
+  #     name: workspace-volume
+  #   - mountPath: /var/run/docker.sock
+  #     name: docker-daemon
+  #   - mountPath: /home/jenkins/.docker
+  #     name: volume-0
+  #   workingDir: /workspace/source
+  volumes:
+  - hostPath:
+      path: /var/run/docker.sock
+    name: docker-daemon
+  - emptyDir: {}
+    name: workspace-volume
+  - name: volume-0
+    secret:
+      secretName: registrysecret
+      items:
+      - key: .dockerconfigjson
+        path: config.json

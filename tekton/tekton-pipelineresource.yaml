@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: jiangytcn-awesome-go-master
+spec:
+  params:
+  - name: revision
+    value: v0.0.1
+  - name: url
+    value: http://github.192.168.1.12.nip.io/jiangytcn/awesome-go.git
+  type: git

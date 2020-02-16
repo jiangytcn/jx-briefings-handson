@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-bot-sa
+secrets:
+- name: registysecret
+  name: git-credentials

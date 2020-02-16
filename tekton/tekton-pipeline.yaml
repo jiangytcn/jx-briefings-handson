@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: jiangytcn-awesome-go-master
+spec:
+  params:
+  - default: 0.0.1
+    description: the version number for this pipeline which is used as a tag on docker
+      images and helm charts
+    name: version
+  - default: "1"
+    description: the PipelineRun build number
+    name: build_id
+  resources:
+  - name: jiangytcn-awesome-go-master
+    type: git
+  tasks:
+  - name: from-build-pack
+    params:
+    - name: version
+      value: ${params.version}
+    - name: build_id
+      value: ${params.build_id}
+    resources:
+      inputs:
+      - name: workspace
+        resource: jiangytcn-awesome-go-master
+    taskRef:
+      name: jiangytcn-awesome-go-master-build

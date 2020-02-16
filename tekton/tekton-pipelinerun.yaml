@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: jiangytcn-awesome-go-master-pipelinerun
+spec:
+  params:
+  - name: version
+    value: 0.0.1
+  - name: build_id
+    value: "1"
+  pipelineRef:
+    apiVersion: tekton.dev/v1alpha1
+    name: jiangytcn-awesome-go-master
+  resources:
+  - name: jiangytcn-awesome-go-master
+    resourceRef:
+      apiVersion: tekton.dev/v1alpha1
+      name: jiangytcn-awesome-go-master
+  serviceAccount: tekton-bot-sa
+  timeout: 240h0m0s
